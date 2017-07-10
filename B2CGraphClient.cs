@@ -26,9 +26,9 @@ namespace EastFive.AzureADB2C
         public B2CGraphClient()
         {
             // The client_id, client_secret, and tenant are pulled in from the App.config file
-            this.clientId = CloudConfigurationManager.GetSetting("b2c:ClientId");
-            this.clientSecret = CloudConfigurationManager.GetSetting("b2c:ClientSecret");
-            this.tenant = CloudConfigurationManager.GetSetting("b2c:Tenant");
+            this.clientId = Web.Configuration.Settings.Get(AppSettings.ClientId);
+            this.clientSecret = Web.Configuration.Settings.Get(AppSettings.ClientSecret);
+            this.tenant = Web.Configuration.Settings.Get(AppSettings.Tenant);
 
             // The AuthenticationContext is ADAL's primary class, in which you indicate the direcotry to use.
             this.authContext = new AuthenticationContext("https://login.microsoftonline.com/" + tenant);
