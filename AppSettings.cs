@@ -8,13 +8,13 @@ namespace EastFive.AzureADB2C
 {
     public static class AppSettings
     {
-        public const string ClientId = "b2c:ClientId";
+        public const string ClientId = "EastFive.AzureADB2C.ClientId";
         /// <summary>
         /// This can only be accessed when the Key is created
         /// AD UI -> App Registrations -> [APP] -> All Settings -> Keys -> [New Key]
         /// </summary>
-        public const string ClientSecret = "b2c:ClientSecret";
-        public const string Tenant = "b2c:Tenant";
+        public const string ClientSecret = "EastFive.AzureADB2C.ClientSecret";
+        public const string Tenant = "EastFive.AzureADB2C.Tenant";
     }
 }
 
