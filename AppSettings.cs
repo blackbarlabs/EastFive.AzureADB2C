@@ -17,3 +17,4 @@ namespace EastFive.AzureADB2C
         public const string Tenant = "b2c:Tenant";
     }
 }
+
