@@ -72,24 +72,57 @@ namespace EastFive.AzureADB2C
             var users = userData.Value.NullToEmpty().ToArray();
             if (users.Length < 1)
                 return onFailure("User not found");
-            var user = users[0];
-            var loginId = default(Guid);
-            if (!Guid.TryParse(user.ObjectId, out loginId))
-                return onFailure("Could not parse objectId");
+            var user = ParseUser(users[0]);
+            if (null == user)
+                return onFailure("Could not parse user");
+            return onSuccess(user.Item1, user.Item3, user.Item4);
+        }
 
-            var isEmail = default(bool);
+        private Tuple<Guid, string, bool, bool> ParseUser(Resources.User user)
+        {
+            if (!Guid.TryParse(user.ObjectId, out Guid loginId))
+                return default(Tuple<Guid, string, bool, bool>);
+            var isEmail = false;
+            var userName = string.Empty;
             if (default(Resources.User.SignInName[]) != user.SignInNames &&
-                    user.SignInNames.Length > 0)
+                user.SignInNames.Length > 0)
             {
                 isEmail = String.Compare(user.SignInNames[0].Type, "emailAddress") == 0;
+                userName = user.SignInNames[0].Value;
             }
+            var forceChange = default(Resources.User.PasswordProfileResource) != user.PasswordProfile && user.PasswordProfile.ForceChangePasswordNextLogin;
+            return new Tuple<Guid, string, bool, bool>(loginId,userName,isEmail,forceChange);
+        }
 
-            var forceChange = default(Resources.User.PasswordProfileResource) != user.PasswordProfile ?
-                user.PasswordProfile.ForceChangePasswordNextLogin
-                :
-                default(bool);
+        public async Task<TResult> GetAllUsersAsync<TResult>(
+            Action<Tuple<Guid,string,bool,bool>[]> onSegment,
+            Func<TResult> onSuccess,
+            Func<string,TResult> onFailure)
+        {
+            const string skipToken = "$skiptoken=X'";
+            var query = string.Empty;
+            do
+            {
+                var userResponse = await SendGraphGetRequest("/users", query);
+                var userPayload = JsonConvert.DeserializeObject<Resources.ODataMetadata<Resources.User[]>>(userResponse);
+                if (null == userPayload)
+                    return onFailure("Could not parse result data");
 
-            return onSuccess(loginId, isEmail, forceChange);
+                var userValues = userPayload.Value.NullToEmpty().ToArray();
+                if (userValues.Length == 0)
+                    break;
+
+                onSegment(userValues
+                    .Select(ParseUser)
+                    .SelectWhereNotNull()
+                    .ToArray());
+
+                var index = userResponse.LastIndexOf(skipToken);
+                if (index == -1)
+                    break;
+                query = userResponse.Substring(index, userResponse.IndexOf("'", index + skipToken.Length) + 1 - index);
+            } while (true);
+            return onSuccess();
         }
 
         public async Task<string> GetAllUsers(string query)
