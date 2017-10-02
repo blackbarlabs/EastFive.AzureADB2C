@@ -80,7 +80,8 @@ namespace EastFive.AzureADB2C
 
         private Tuple<Guid, string, bool, bool> ParseUser(Resources.User user)
         {
-            if (!Guid.TryParse(user.ObjectId, out Guid loginId))
+            Guid loginId;
+            if (!Guid.TryParse(user.ObjectId, out loginId))
                 return default(Tuple<Guid, string, bool, bool>);
             var isEmail = false;
             var userName = string.Empty;
@@ -214,10 +215,13 @@ namespace EastFive.AzureADB2C
             return await SendGraphDeleteRequest("/users/" + objectId);
         }
 
-        public async Task<string> RegisterExtension(string objectId, string body)
+        public async Task<TResult> RegisterExtension<TResult>(string objectId, string body,
+            Func<TResult> onSuccess,
+            Func<string, TResult> onFailure)
         {
-            throw new NotImplementedException();
-            // return await SendGraphPostRequest("/applications/" + objectId + "/extensionProperties", body);
+            return await SendGraphPostRequest("/applications/" + objectId + "/extensionProperties", body,
+                (responseBody) => onSuccess(),
+                (code, why, error) => onFailure(why));
         }
 
         public async Task<string> UnregisterExtension(string appObjectId, string extensionObjectId)
