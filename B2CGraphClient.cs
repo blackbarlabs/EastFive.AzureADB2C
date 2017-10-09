@@ -39,16 +39,18 @@ namespace EastFive.AzureADB2C
         }
 
         public async Task<TResult> GetUserByObjectId<TResult>(string objectId,
-            Func<string, bool, bool, TResult> onSuccess,
+            Func<string, string, bool, bool, TResult> onSuccess,
             Func<string, TResult> onFailure)
         {
             var userResult = await SendGraphGetRequest("/users/" + objectId, null);
             var user = JsonConvert.DeserializeObject<Resources.User>(userResult);
             var signinName = default(string);
+            var displayName = default(string);
             var isEmail = default(bool);
             if (default(Resources.User.SignInName[]) != user.SignInNames &&
                     user.SignInNames.Length > 0)
             {
+                displayName = user.DisplayName;
                 signinName = user.SignInNames[0].Value;
                 isEmail = String.Compare(user.SignInNames[0].Type, "emailAddress") == 0;
             }
@@ -57,7 +59,7 @@ namespace EastFive.AzureADB2C
                 :
                 default(bool);
 
-            return onSuccess(signinName, isEmail, forceChange);
+            return onSuccess(displayName, signinName, isEmail, forceChange);
         }
 
         public async Task<TResult> GetUserByUserIdAsync<TResult>(string userId,
