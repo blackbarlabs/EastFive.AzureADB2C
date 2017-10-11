@@ -39,7 +39,7 @@ namespace EastFive.AzureADB2C
         }
 
         public async Task<TResult> GetUserByObjectId<TResult>(string objectId,
-            Func<string, string, bool, bool, TResult> onSuccess,
+            Func<string, string, bool, bool, bool, TResult> onSuccess,
             Func<string, TResult> onFailure)
         {
             var userResult = await SendGraphGetRequest("/users/" + objectId, null);
@@ -59,11 +59,11 @@ namespace EastFive.AzureADB2C
                 :
                 default(bool);
 
-            return onSuccess(displayName, signinName, isEmail, forceChange);
+            return onSuccess(displayName, signinName, isEmail, forceChange, user.AccountEnabled);
         }
 
         public async Task<TResult> GetUserByUserIdAsync<TResult>(string userId,
-            Func<Guid, bool, bool, TResult> onSuccess,
+            Func<Guid, bool, bool, bool, TResult> onSuccess,
             Func<string, TResult> onFailure)
         {
             var userResult = await SendGraphGetRequest("/users/", 
@@ -77,14 +77,14 @@ namespace EastFive.AzureADB2C
             var user = ParseUser(users[0]);
             if (null == user)
                 return onFailure("Could not parse user");
-            return onSuccess(user.Item1, user.Item3, user.Item4);
+            return onSuccess(user.Item1, user.Item3, user.Item4, user.Item5);
         }
 
-        private Tuple<Guid, string, bool, bool> ParseUser(Resources.User user)
+        private Tuple<Guid, string, bool, bool, bool> ParseUser(Resources.User user)
         {
             Guid loginId;
             if (!Guid.TryParse(user.ObjectId, out loginId))
-                return default(Tuple<Guid, string, bool, bool>);
+                return default(Tuple<Guid, string, bool, bool, bool>);
             var isEmail = false;
             var userName = string.Empty;
             if (default(Resources.User.SignInName[]) != user.SignInNames &&
@@ -94,11 +94,11 @@ namespace EastFive.AzureADB2C
                 userName = user.SignInNames[0].Value;
             }
             var forceChange = default(Resources.User.PasswordProfileResource) != user.PasswordProfile && user.PasswordProfile.ForceChangePasswordNextLogin;
-            return new Tuple<Guid, string, bool, bool>(loginId,userName,isEmail,forceChange);
+            return new Tuple<Guid, string, bool, bool, bool>(loginId,userName,isEmail,forceChange,user.AccountEnabled);
         }
 
         public async Task<TResult> GetAllUsersAsync<TResult>(
-            Action<Tuple<Guid,string,bool,bool>[]> onSegment,
+            Action<Tuple<Guid,string,bool,bool,bool>[]> onSegment,
             Func<TResult> onSuccess,
             Func<string,TResult> onFailure)
         {
@@ -177,7 +177,7 @@ namespace EastFive.AzureADB2C
                              String.Compare("signInNames", errorValue.Value) == 0)))
                     {
                         return await GetUserByUserIdAsync(userId,
-                            (loginId, isEmailCurrent, forceChangeCurrent) => onUserIdAlreadyExists(loginId),
+                            (loginId, isEmailCurrent, forceChangeCurrent, accountEnabled) => onUserIdAlreadyExists(loginId),
                             (why) => onUserIdAlreadyExists(default(Guid)));
                     }
                     if (
