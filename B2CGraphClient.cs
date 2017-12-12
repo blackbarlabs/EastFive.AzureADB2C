@@ -196,7 +196,9 @@ namespace EastFive.AzureADB2C
             return result;
         }
 
-        public async Task<string> UpdateUserPasswordAsync(string objectId, string password, bool forceChange)
+        public async Task<TResult> UpdateUserPasswordAsync<TResult>(string objectId, string password, bool forceChange,
+            Func<string,TResult> onSuccess,
+            Func<string,TResult> onFailure)
         {
             var user = new EastFive.AzureADB2C.Resources.UserPasswordPatch()
             {
@@ -208,8 +210,8 @@ namespace EastFive.AzureADB2C
                 },
             };
             var json = JsonConvert.SerializeObject(user);
-            var response = await SendGraphPatchRequest("/users/" + objectId, json);
-            return response;
+            return await SendGraphPatchRequest("/users/" + objectId, json,
+                onSuccess, onFailure);
         }
 
         public async Task<string> DeleteUser(string objectId)
@@ -251,11 +253,6 @@ namespace EastFive.AzureADB2C
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", result.AccessToken);
             HttpResponseMessage response = await http.SendAsync(request);
 
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("DELETE " + url);
-            Console.WriteLine("Authorization: Bearer " + result.AccessToken.Substring(0, 80) + "...");
-            Console.WriteLine("");
-
             if (!response.IsSuccessStatusCode)
             {
                 string error = await response.Content.ReadAsStringAsync();
@@ -263,27 +260,17 @@ namespace EastFive.AzureADB2C
                 throw new WebException("Error Calling the Graph API: \n" + JsonConvert.SerializeObject(formatted, Formatting.Indented));
             }
 
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine((int)response.StatusCode + ": " + response.ReasonPhrase);
-            Console.WriteLine("");
-
             return await response.Content.ReadAsStringAsync();
         }
 
-        private async Task<string> SendGraphPatchRequest(string api, string json)
+        private async Task<TResult> SendGraphPatchRequest<TResult>(string api, string json,
+            Func<string,TResult> onSuccess,
+            Func<string,TResult> onFailure)
         {
             // NOTE: This client uses ADAL v2, not ADAL v4
             AuthenticationResult result = await authContext.AcquireTokenAsync(Globals.aadGraphResourceId, credential);
             HttpClient http = new HttpClient();
             string url = Globals.aadGraphEndpoint + tenant + api + "?" + Globals.aadGraphVersion;
-
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("PATCH " + url);
-            Console.WriteLine("Authorization: Bearer " + result.AccessToken.Substring(0, 80) + "...");
-            Console.WriteLine("Content-Type: application/json");
-            Console.WriteLine("");
-            Console.WriteLine(json);
-            Console.WriteLine("");
 
             HttpRequestMessage request = new HttpRequestMessage(new HttpMethod("PATCH"), url);
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", result.AccessToken);
@@ -294,14 +281,10 @@ namespace EastFive.AzureADB2C
             {
                 string error = await response.Content.ReadAsStringAsync();
                 object formatted = JsonConvert.DeserializeObject(error);
-                throw new WebException("Error Calling the Graph API: \n" + JsonConvert.SerializeObject(formatted, Formatting.Indented));
+                return onFailure(error);
             }
 
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine((int)response.StatusCode + ": " + response.ReasonPhrase);
-            Console.WriteLine("");
-
-            return await response.Content.ReadAsStringAsync();
+            return onSuccess(await response.Content.ReadAsStringAsync());
         }
 
         private async Task<TResult> SendGraphPostRequest<TResult>(string api, string json,
@@ -342,11 +325,6 @@ namespace EastFive.AzureADB2C
                 url += "&" + query;
             }
 
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("GET " + url);
-            Console.WriteLine("Authorization: Bearer " + result.AccessToken.Substring(0, 80) + "...");
-            Console.WriteLine("");
-
             // Append the access token for the Graph API to the Authorization header of the request, using the Bearer scheme.
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, url);
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", result.AccessToken);
@@ -358,10 +336,6 @@ namespace EastFive.AzureADB2C
                 object formatted = JsonConvert.DeserializeObject(error);
                 throw new WebException("Error Calling the Graph API: \n" + JsonConvert.SerializeObject(formatted, Formatting.Indented));
             }
-
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine((int)response.StatusCode + ": " + response.ReasonPhrase);
-            Console.WriteLine("");
 
             return await response.Content.ReadAsStringAsync();
         }
