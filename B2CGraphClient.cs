@@ -43,24 +43,30 @@ namespace EastFive.AzureADB2C
             Func<string, string, bool, bool, bool, TResult> onSuccess,
             Func<string, TResult> onFailure)
         {
-            var userResult = await SendGraphGetRequest("/users/" + objectId, null);
-            var user = JsonConvert.DeserializeObject<Resources.User>(userResult);
-            var signinName = default(string);
-            var displayName = default(string);
-            var isEmail = default(bool);
-            if (default(Resources.User.SignInName[]) != user.SignInNames &&
-                    user.SignInNames.Length > 0)
+            try
             {
-                displayName = user.DisplayName;
-                signinName = user.SignInNames[0].Value;
-                isEmail = String.Compare(user.SignInNames[0].Type, "emailAddress") == 0;
-            }
-            var forceChange = default(Resources.User.PasswordProfileResource) != user.PasswordProfile ?
-                user.PasswordProfile.ForceChangePasswordNextLogin
-                :
-                default(bool);
+                var userResult = await SendGraphGetRequest("/users/" + objectId, null);
+                var user = JsonConvert.DeserializeObject<Resources.User>(userResult);
+                var signinName = default(string);
+                var displayName = default(string);
+                var isEmail = default(bool);
+                if (default(Resources.User.SignInName[]) != user.SignInNames &&
+                    user.SignInNames.Length > 0)
+                {
+                    displayName = user.DisplayName;
+                    signinName = user.SignInNames[0].Value;
+                    isEmail = String.Compare(user.SignInNames[0].Type, "emailAddress") == 0;
+                }
+                var forceChange = default(Resources.User.PasswordProfileResource) != user.PasswordProfile
+                    ? user.PasswordProfile.ForceChangePasswordNextLogin
+                    : default(bool);
 
-            return onSuccess(displayName, signinName, isEmail, forceChange, user.AccountEnabled);
+                return onSuccess(displayName, signinName, isEmail, forceChange, user.AccountEnabled);
+            }
+            catch (Exception e)
+            {
+                return onFailure(e.Message);
+            }
         }
 
         public async Task<TResult> GetUserByUserIdAsync<TResult>(string userId,
