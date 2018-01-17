@@ -23,7 +23,7 @@ namespace EastFive.AzureADB2C
 
         private AuthenticationContext authContext;
         private ClientCredential credential;
-
+        
         public B2CGraphClient()
         {
             // The client_id, client_secret, and tenant are pulled in from the App.config file
@@ -36,7 +36,7 @@ namespace EastFive.AzureADB2C
 
             // The ClientCredential is where you pass in your client_id and client_secret, which are 
             // provided to Azure AD in order to receive an access_token using the app's identity.
-            this.credential = new ClientCredential(clientId, clientSecret);
+            this.credential = new ClientCredential(clientId,  clientSecret);
         }
 
         public async Task<TResult> GetUserByObjectId<TResult>(string objectId,
@@ -316,7 +316,14 @@ namespace EastFive.AzureADB2C
         {
             // First, use ADAL to acquire a token using the app's identity (the credential)
             // The first parameter is the resource we want an access_token for; in this case, the Graph API.
-            AuthenticationResult result = await authContext.AcquireTokenAsync("https://graph.windows.net", credential);
+            AuthenticationResult result = null;
+            try
+            {
+                result = await authContext.AcquireTokenAsync("https://graph.windows.net", credential);
+            } catch(Exception ex)
+            {
+                ex.GetType();
+            }
 
             // For B2C user managment, be sure to use the 1.6 Graph API version.
             HttpClient http = new HttpClient();
